@@ -1,0 +1,4 @@
+.filter-yellow {
+  filter: brightness(0) saturate(100%) invert(81%) sepia(64%) saturate(1233%)
+    hue-rotate(358deg) brightness(103%) contrast(101%);
+}

@@ -10,7 +10,8 @@ import NewAlert from "@/utils/Dashboard/NewAlert";
 import UnreadItems from "@/utils/Dashboard/UnreadItems/UnreadItems";
 
 const DashboardPage = () => {
-  const { userName } = useContext(AuthContext);
+  // const { userName } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   // Animation variants for grid items
   const gridItemVariants = {
@@ -27,7 +28,8 @@ const DashboardPage = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
       >
-        {`Welcome ${userName || "User"},`}
+        {/* {`Welcome ${userName || "User"},`} */}
+        {`Welcome ${user?.displayName || "User"},`}
       </motion.header>
 
       {/* Grid Container */}

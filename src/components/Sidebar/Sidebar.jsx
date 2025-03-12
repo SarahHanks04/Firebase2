@@ -408,7 +408,7 @@
 // export default Sidebar;
 
 
-// Sidebar.js
+
 import { useContext, useState } from "react";
 import Logo1 from "../../assets/Images/Logo1.png";
 import DashboardIcon from "../../assets/Icons/DashboardIcon.svg";
@@ -425,12 +425,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { HiOutlineMenu } from "react-icons/hi";
 import { motion } from "framer-motion";
 import { SidebarContext } from "@/context/SidebarContext";
-import { AuthContext } from "@/context/AuthenticationContext"; // Import AuthContext
+import { AuthContext } from "@/context/AuthenticationContext";
 import "../../styles/Sidebarstyle.css";
 
 const Sidebar = () => {
   const { isSidebarOpen, toggleSidebar } = useContext(SidebarContext);
-  const { logout } = useContext(AuthContext); // Use logout from AuthContext
+  const { logout } = useContext(AuthContext); 
   const navigate = useNavigate();
   const location = useLocation();
   const [isEditorOpen, setIsEditorOpen] = useState(false);

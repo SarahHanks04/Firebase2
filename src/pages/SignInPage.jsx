@@ -204,34 +204,6 @@ const SignInPage = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // const handleAuth = async () => {
-  //   setError("");
-
-  //   if (!email || !password || (!isLogin && !name)) {
-  //     setError("Please fill in all fields.");
-  //     return;
-  //   }
-
-  //   if (!isLogin && password !== confirmPassword) {
-  //     setError("Passwords do not match.");
-  //     return;
-  //   }
-
-  //   try {
-  //     if (isLogin) {
-  //       // Sign in with Firebase
-  //       await signInWithEmailAndPassword(auth, email, password);
-  //       navigate("/dashboard");
-  //     } else {
-  //       // Sign up with Firebase
-  //       await createUserWithEmailAndPassword(auth, email, password);
-  //       navigate("/dashboard");
-  //     }
-  //   } catch (error) {
-  //     setError(error.message);
-  //   }
-  // };
-
   const handleAuth = async () => {
     setError("");
 

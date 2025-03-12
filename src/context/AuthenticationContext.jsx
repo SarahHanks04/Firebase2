@@ -61,8 +61,52 @@
 // };
 
 
+// import React, { createContext, useState, useEffect } from "react";
+// import { onAuthStateChanged, signOut } from "firebase/auth";
+// import { auth } from "@/config/firebase";
+
+// export const AuthContext = createContext();
+
+// export const AuthProvider = ({ children }) => {
+//   const [isAuthenticated, setIsAuthenticated] = useState(false);
+//   const [user, setUser] = useState(null);
+
+//   useEffect(() => {
+//     const unsubscribe = onAuthStateChanged(auth, (user) => {
+//       console.log("Auth state changed. User:", user);
+//       if (user) {
+//         setIsAuthenticated(true);
+//         setUser(user);
+//       } else {
+//         setIsAuthenticated(false);
+//         setUser(null);
+//       }
+//     });
+
+//     return () => unsubscribe(); 
+//   }, []);
+
+//   const logout = async () => {
+//     try {
+//       await signOut(auth);
+//       setIsAuthenticated(false);
+//       setUser(null);
+//     } catch (error) {
+//       console.error("Error logging out:", error);
+//     }
+//   };
+
+//   const values = {
+//     isAuthenticated,
+//     user,
+//     logout, 
+//   };
+
+//   return <AuthContext.Provider value={values}>{children}</AuthContext.Provider>;
+// };
+
 import React, { createContext, useState, useEffect } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth } from "@/config/firebase";
 
 export const AuthContext = createContext();
@@ -72,10 +116,19 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log("Auth state changed. User:", user); 
       if (user) {
-        setIsAuthenticated(true);
-        setUser(user);
+        try {
+          // Set persistence explicitly
+          await setPersistence(auth, browserLocalPersistence);
+          setIsAuthenticated(true);
+          setUser(user);
+        } catch (error) {
+          console.error("Error setting persistence:", error);
+          setIsAuthenticated(false);
+          setUser(null);
+        }
       } else {
         setIsAuthenticated(false);
         setUser(null);
@@ -98,7 +151,7 @@ export const AuthProvider = ({ children }) => {
   const values = {
     isAuthenticated,
     user,
-    logout, 
+    logout,
   };
 
   return <AuthContext.Provider value={values}>{children}</AuthContext.Provider>;

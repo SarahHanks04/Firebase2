@@ -204,11 +204,12 @@ import { db } from "@/config/firebase";
 const FieldEditor = ({ formId, fields, onSave }) => {
   const [editingFields, setEditingFields] = useState(fields || []);
   const [nextId, setNextId] = useState(() => {
-    const maxId = Math.max(...fields.map((f) => parseInt(f.id, 10) || 0), 0);
+    // const maxId = Math.max(...fields.map((f) => parseInt(f.id, 10) || 0), 0);
+    const maxId = Math.max(...(fields ?? []).map((f) => parseInt(f.id, 10) || 0), 0);
     return maxId + 1;
   });
 
-  const maxId = Math.max(...(fields ?? []).map((f) => parseInt(f.id, 10) || 0), 0);
+  
 
 
   const addField = () => {
@@ -246,10 +247,10 @@ const FieldEditor = ({ formId, fields, onSave }) => {
         fields: editingFields,
       });
       onSave(editingFields);
-      alert("Fields updated successfully!");
+      // alert("Fields updated successfully!");
     } catch (error) {
       console.error("Error updating fields:", error);
-      alert("Failed to update fields. Please try again.");
+      // alert("Failed to update fields. Please try again.");
     }
   };
 

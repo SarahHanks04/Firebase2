@@ -208,6 +208,9 @@ const FieldEditor = ({ formId, fields, onSave }) => {
     return maxId + 1;
   });
 
+  const maxId = Math.max(...(fields ?? []).map((f) => parseInt(f.id, 10) || 0), 0);
+
+
   const addField = () => {
     setEditingFields([
       ...editingFields,
@@ -239,7 +242,7 @@ const FieldEditor = ({ formId, fields, onSave }) => {
 
   const handleSave = async () => {
     try {
-      await updateDoc(doc(db, "forms", formId), {
+      await updateDoc(doc(db, "formEvents", formId), {
         fields: editingFields,
       });
       onSave(editingFields);

@@ -350,7 +350,8 @@ const AdminFormManager = () => {
       {selectedForm && (
         <div className="mt-6">
           <h2 className="text-xl font-semibold mb-4">Editing: {selectedForm.formType}</h2>
-          <FieldEditor key={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} />
+          {/* <FieldEditor key={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} /> */}
+          <FieldEditor formId={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} />
         </div>
       )}
 

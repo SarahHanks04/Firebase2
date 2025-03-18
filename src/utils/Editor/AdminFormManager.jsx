@@ -226,82 +226,235 @@
 
 
 // WITH FIREBASE
+// import React, { useState } from "react";
+// import { useQueryClient } from "@tanstack/react-query";
+// import {
+//   useFetchFormEvents,
+//   useMutateFormEvent,
+//   useDeleteFormEvent,
+// } from "@/api/ResponseApi";
+// import { toast, ToastContainer } from "react-toastify";
+// import FieldEditor from "./FieldEditor";
+// import { Trash, Plus } from "lucide-react";
+// import Spinner from "../Spinner/Spinner";
+
+// const AdminFormManager = () => {
+//   const queryClient = useQueryClient();
+//   const { data: forms, isLoading, error } = useFetchFormEvents();
+//   const { mutate: saveForm } = useMutateFormEvent();
+//   const { mutate: deleteForm } = useDeleteFormEvent();
+
+//   const [selectedForm, setSelectedForm] = useState(null);
+//   const [newForm, setNewForm] = useState({ formType: "", title: "" });
+
+//   const handleFormSelect = (form) => setSelectedForm(form);
+
+//   const handleSaveForm = (updatedFields) => {
+//     if (!selectedForm) return;
+
+//     const updatedForm = { ...selectedForm, fields: updatedFields };
+//     saveForm(
+//       { id: selectedForm.id, data: updatedForm },
+//       {
+//         onSuccess: () => {
+//           toast.success("Form updated successfully!");
+//           queryClient.invalidateQueries(["formEvents"]);
+//         },
+//         onError: () => toast.error("Failed to update the form.")
+//       }
+//     );
+//   };
+
+//   const handleDeleteForm = (id) => {
+//     if (window.confirm("Are you sure you want to delete this form?")) {
+//       deleteForm(id, {
+//         onSuccess: () => {
+//           toast.success("Form deleted successfully!");
+//           setSelectedForm(null);
+//         },
+//         onError: () => toast.error("Failed to delete the form.")
+//       });
+//     }
+//   };
+
+//   const handleCreateForm = () => {
+//     if (!newForm.formType.trim() || !newForm.title.trim()) {
+//       toast.error("Form type and title cannot be empty.");
+//       return;
+//     }
+
+//     const newFormData = {
+//       id: Date.now().toString(),
+//       formType: newForm.formType,
+//       title: newForm.title,
+//       eventDate: new Date().toISOString(),
+//       fields: []
+//     };
+
+//     saveForm(
+//       { data: newFormData },
+//       {
+//         onSuccess: () => {
+//           toast.success("Form created successfully!");
+//           setNewForm({ formType: "", title: "" });
+//           queryClient.invalidateQueries(["formEvents"]);
+//         },
+//         onError: () => toast.error("Failed to create the form.")
+//       }
+//     );
+//   };
+
+//   if (isLoading) return <Spinner />;
+//   if (error) return <p className="text-red-500">Error loading forms.</p>;
+
+//   return (
+//     <div className="h-full bg-bulb-lightBlue px-4 mt-[1.6rem] pt-4 lg:mt-[0rem] md:p-6 lg:pl-10 ml-0 lg:ml-[12rem] sm:ml-0 pb-4">
+//       <h1 className="text-2xl font-bold mb-4">Admin Form Management</h1>
+
+//       {/* Create Form Section */}
+//       <div className="mb-6">
+//         <input
+//           type="text"
+//           placeholder="Form Type"
+//           value={newForm.formType}
+//           onChange={(e) => setNewForm({ ...newForm, formType: e.target.value })}
+//           className="p-2 border rounded-md mr-2"
+//         />
+//         <input
+//           type="text"
+//           placeholder="Form Title"
+//           value={newForm.title}
+//           onChange={(e) => setNewForm({ ...newForm, title: e.target.value })}
+//           className="p-2 border rounded-md mr-2"
+//         />
+//         <button onClick={handleCreateForm} className="p-2 bg-blue-500 text-white rounded-md">
+//           <Plus size={16} /> Create
+//         </button>
+//       </div>
+
+//       {/* Forms List */}
+//       <ul className="space-y-2">
+//         {forms.map((form) => (
+//           <li key={form.id} className="p-2 border rounded-md flex justify-between items-center">
+//             <span onClick={() => handleFormSelect(form)} className="cursor-pointer">
+//               {form.formType} - {form.title}
+//             </span>
+//             <button onClick={() => handleDeleteForm(form.id)} className="text-red-500">
+//               <Trash size={16} />
+//             </button>
+//           </li>
+//         ))}
+//       </ul>
+
+//       {/* Form Editor */}
+//       {selectedForm && (
+//         <div className="mt-6">
+//           <h2 className="text-xl font-semibold mb-4">Editing: {selectedForm.formType}</h2>
+//           {/* <FieldEditor key={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} /> */}
+//           <FieldEditor formId={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} />
+//         </div>
+//       )}
+
+//       <ToastContainer />
+//     </div>
+//   );
+// };
+
+// export default AdminFormManager;
+
+
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useFetchFormEvents,
-  useMutateFormEvent,
-  useDeleteFormEvent,
-} from "@/api/ResponseApi";
 import { toast, ToastContainer } from "react-toastify";
-import FieldEditor from "./FieldEditor";
 import { Trash, Plus } from "lucide-react";
 import Spinner from "../Spinner/Spinner";
+import { addDoc, collection, doc, deleteDoc, onSnapshot } from "firebase/firestore";
+import { db } from "@/config/firebase"; // Adjust the import path as needed
+import FieldEditor from "./FieldEditor";
 
 const AdminFormManager = () => {
   const queryClient = useQueryClient();
-  const { data: forms, isLoading, error } = useFetchFormEvents();
-  const { mutate: saveForm } = useMutateFormEvent();
-  const { mutate: deleteForm } = useDeleteFormEvent();
-
+  const [forms, setForms] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedForm, setSelectedForm] = useState(null);
   const [newForm, setNewForm] = useState({ formType: "", title: "" });
 
+  // Fetch forms from Firestore
+  React.useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "formEvents"), (snapshot) => {
+      const formsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setForms(formsData);
+      setIsLoading(false);
+    }, (err) => {
+      console.error("Error fetching forms:", err);
+      setError("Failed to load forms.");
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe(); // Cleanup subscription
+  }, []);
+
   const handleFormSelect = (form) => setSelectedForm(form);
 
-  const handleSaveForm = (updatedFields) => {
+  const handleSaveForm = async (updatedFields) => {
     if (!selectedForm) return;
 
     const updatedForm = { ...selectedForm, fields: updatedFields };
-    saveForm(
-      { id: selectedForm.id, data: updatedForm },
-      {
-        onSuccess: () => {
-          toast.success("Form updated successfully!");
-          queryClient.invalidateQueries(["formEvents"]);
-        },
-        onError: () => toast.error("Failed to update the form.")
-      }
-    );
-  };
-
-  const handleDeleteForm = (id) => {
-    if (window.confirm("Are you sure you want to delete this form?")) {
-      deleteForm(id, {
-        onSuccess: () => {
-          toast.success("Form deleted successfully!");
-          setSelectedForm(null);
-        },
-        onError: () => toast.error("Failed to delete the form.")
-      });
+    try {
+      await addDoc(collection(db, "formEvents"), updatedForm);
+      toast.success("Form updated successfully!");
+      queryClient.invalidateQueries(["formEvents"]);
+    } catch (err) {
+      console.error("Error updating form:", err);
+      toast.error("Failed to update the form.");
     }
   };
 
-  const handleCreateForm = () => {
+  const handleDeleteForm = async (id) => {
+    if (window.confirm("Are you sure you want to delete this form?")) {
+      try {
+        await deleteDoc(doc(db, "formEvents", id));
+        toast.success("Form deleted successfully!");
+        setSelectedForm(null);
+      } catch (err) {
+        console.error("Error deleting form:", err);
+        toast.error("Failed to delete the form.");
+      }
+    }
+  };
+
+  const handleCreateForm = async () => {
     if (!newForm.formType.trim() || !newForm.title.trim()) {
       toast.error("Form type and title cannot be empty.");
       return;
     }
 
     const newFormData = {
-      id: Date.now().toString(),
       formType: newForm.formType,
       title: newForm.title,
       eventDate: new Date().toISOString(),
-      fields: []
+      fields: [],
     };
 
-    saveForm(
-      { data: newFormData },
-      {
-        onSuccess: () => {
-          toast.success("Form created successfully!");
-          setNewForm({ formType: "", title: "" });
-          queryClient.invalidateQueries(["formEvents"]);
-        },
-        onError: () => toast.error("Failed to create the form.")
-      }
-    );
+    try {
+      // Add the new form to Firestore
+      const docRef = await addDoc(collection(db, "formEvents"), newFormData);
+      toast.success("Form created successfully!");
+      setNewForm({ formType: "", title: "" });
+
+      // Update the local state with the new form
+      setForms((prevForms) => [
+        ...prevForms,
+        { id: docRef.id, ...newFormData },
+      ]);
+    } catch (err) {
+      console.error("Error creating form:", err);
+      toast.error("Failed to create the form.");
+    }
   };
 
   if (isLoading) return <Spinner />;
@@ -350,7 +503,6 @@ const AdminFormManager = () => {
       {selectedForm && (
         <div className="mt-6">
           <h2 className="text-xl font-semibold mb-4">Editing: {selectedForm.formType}</h2>
-          {/* <FieldEditor key={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} /> */}
           <FieldEditor formId={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} />
         </div>
       )}
@@ -361,3 +513,158 @@ const AdminFormManager = () => {
 };
 
 export default AdminFormManager;
+
+
+
+// import React, { useState } from "react";
+// import { useQueryClient } from "@tanstack/react-query";
+// import { toast, ToastContainer } from "react-toastify";
+// import { Trash, Plus } from "lucide-react";
+// import Spinner from "../Spinner/Spinner";
+// import { addDoc, collection, doc, deleteDoc, onSnapshot, updateDoc } from "firebase/firestore";
+// import { db } from "@/config/firebase"; // Adjust the import path as needed
+// import FieldEditor from "./FieldEditor";
+
+// const AdminFormManager = () => {
+//   const queryClient = useQueryClient();
+//   const [forms, setForms] = useState([]);
+//   const [isLoading, setIsLoading] = useState(true);
+//   const [error, setError] = useState(null);
+//   const [selectedForm, setSelectedForm] = useState(null);
+//   const [newForm, setNewForm] = useState({ formType: "", title: "" });
+
+//   // Fetch forms from Firestore
+//   React.useEffect(() => {
+//     const unsubscribe = onSnapshot(collection(db, "formEvents"), (snapshot) => {
+//       const formsData = snapshot.docs.map((doc) => ({
+//         id: doc.id,
+//         ...doc.data(),
+//       }));
+//       setForms(formsData);
+//       setIsLoading(false);
+//     }, (err) => {
+//       console.error("Error fetching forms:", err);
+//       setError("Failed to load forms.");
+//       setIsLoading(false);
+//     });
+
+//     return () => unsubscribe(); // Cleanup subscription
+//   }, []);
+
+//   const handleFormSelect = (form) => setSelectedForm(form);
+
+//   const handleSaveForm = async (updatedFields) => {
+//     if (!selectedForm) return;
+
+//     try {
+//       // Update the existing form in Firestore
+//       await updateDoc(doc(db, "formEvents", selectedForm.id), {
+//         fields: updatedFields,
+//       });
+//       toast.success("Form updated successfully!");
+//       queryClient.invalidateQueries(["formEvents"]);
+//     } catch (err) {
+//       console.error("Error updating form:", err);
+//       toast.error("Failed to update the form.");
+//     }
+//   };
+
+//   const handleDeleteForm = async (id) => {
+//     if (window.confirm("Are you sure you want to delete this form?")) {
+//       try {
+//         await deleteDoc(doc(db, "formEvents", id));
+//         toast.success("Form deleted successfully!");
+//         setSelectedForm(null);
+//       } catch (err) {
+//         console.error("Error deleting form:", err);
+//         toast.error("Failed to delete the form.");
+//       }
+//     }
+//   };
+
+//   const handleCreateForm = async () => {
+//     if (!newForm.formType.trim() || !newForm.title.trim()) {
+//       toast.error("Form type and title cannot be empty.");
+//       return;
+//     }
+
+//     const newFormData = {
+//       formType: newForm.formType,
+//       title: newForm.title,
+//       eventDate: new Date().toISOString(),
+//       fields: [],
+//     };
+
+//     try {
+//       // Add the new form to Firestore
+//       const docRef = await addDoc(collection(db, "formEvents"), newFormData);
+//       toast.success("Form created successfully!");
+//       setNewForm({ formType: "", title: "" });
+
+//       // Update the local state with the new form
+//       setForms((prevForms) => [
+//         ...prevForms,
+//         { id: docRef.id, ...newFormData },
+//       ]);
+//     } catch (err) {
+//       console.error("Error creating form:", err);
+//       toast.error("Failed to create the form.");
+//     }
+//   };
+
+//   if (isLoading) return <Spinner />;
+//   if (error) return <p className="text-red-500">Error loading forms.</p>;
+
+//   return (
+//     <div className="h-full bg-bulb-lightBlue px-4 mt-[1.6rem] pt-4 lg:mt-[0rem] md:p-6 lg:pl-10 ml-0 lg:ml-[12rem] sm:ml-0 pb-4">
+//       <h1 className="text-2xl font-bold mb-4">Admin Form Management</h1>
+
+//       {/* Create Form Section */}
+//       <div className="mb-6">
+//         <input
+//           type="text"
+//           placeholder="Form Type"
+//           value={newForm.formType}
+//           onChange={(e) => setNewForm({ ...newForm, formType: e.target.value })}
+//           className="p-2 border rounded-md mr-2"
+//         />
+//         <input
+//           type="text"
+//           placeholder="Form Title"
+//           value={newForm.title}
+//           onChange={(e) => setNewForm({ ...newForm, title: e.target.value })}
+//           className="p-2 border rounded-md mr-2"
+//         />
+//         <button onClick={handleCreateForm} className="p-2 bg-blue-500 text-white rounded-md">
+//           <Plus size={16} /> Create
+//         </button>
+//       </div>
+
+//       {/* Forms List */}
+//       <ul className="space-y-2">
+//         {forms.map((form) => (
+//           <li key={form.id} className="p-2 border rounded-md flex justify-between items-center">
+//             <span onClick={() => handleFormSelect(form)} className="cursor-pointer">
+//               {form.formType} - {form.title}
+//             </span>
+//             <button onClick={() => handleDeleteForm(form.id)} className="text-red-500">
+//               <Trash size={16} />
+//             </button>
+//           </li>
+//         ))}
+//       </ul>
+
+//       {/* Form Editor */}
+//       {selectedForm && (
+//         <div className="mt-6">
+//           <h2 className="text-xl font-semibold mb-4">Editing: {selectedForm.formType}</h2>
+//           <FieldEditor formId={selectedForm.id} fields={selectedForm.fields} onSave={handleSaveForm} />
+//         </div>
+//       )}
+
+//       <ToastContainer />
+//     </div>
+//   );
+// };
+
+// export default AdminFormManager;
